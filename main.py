@@ -75,7 +75,56 @@ SITES = [
         "url": "https://iplano.com.br/alugar/parque-fehr-sao-carlos-sp,residencial-parque-fehr-sao-carlos-sp/casas",
         "link_pattern": "/imovel/",
         "base_url": "https://iplano.com.br"
+    },
+    {
+        "name": "Cardinalli",
+        "url": "https://www.cardinali.com.br/pesquisa-de-imoveis/?busca_free=&locacao_venda=L&valor_loc_min_input=0&valor_loc_max_input=0&valor_ven_min_input=0&valor_ven_max_input=0&id_cidade%5B%5D=190&id_tipo_imovel%5B%5D=39&id_tipo_imovel%5B%5D=10&id_tipo_imovel%5B%5D=40&id_tipo_imovel%5B%5D=12&id_tipo_imovel%5B%5D=13&id_tipo_imovel%5B%5D=180&id_bairro%5B%5D=3742&dormitorio=&garagem=&finalidade=&a_min=&a_max=&area_tipo=&vmi=&vma=",
+        "link_pattern": "/pesquisa-de-imoveis/alugar/Sao-Carlos/",
+        "base_url": "https://www.cardinali.com.br"
+    },
+    {
+        "name": "Predial São Carlos",
+        "url": "https://predialsaocarlos.com/buscar-anuncios/casa-casa_comercial-casa_de_condominio-para-alugar-em-sao%20carlos-no-bairro-parque%20fehr",
+        "link_pattern": "/anuncio/",
+        "base_url": "https://predialsaocarlos.com"
+    },
+    {
+        "name": "Sapé Imóveis",
+        "url": "https://www.sapeimoveis.com.br/Alugar?tipo=CASA&bairro=PQ+FEHR",
+        "link_pattern": "Detalhes?id=",
+        "base_url": "https://www.sapeimoveis.com.br"
+    },
+    {
+        "name": "Contato Imóveis",
+        "url": "https://www.icontato.com.br/alugar/residencial-parque-fehr-sao-carlos-sp",
+        "link_pattern": "/imovel/",
+        "base_url": "https://www.icontato.com.br"
+    },
+    {
+        "name": "São Carlos Imóveis",
+        "url": "https://saocarlosimoveis.com.br/alugar/condominio-parque-fehr-sao-carlos-sp",
+        "link_pattern": "/imovel/",
+        "base_url": "https://saocarlosimoveis.com.br"
+    },
+    {
+        "name": "Top Imóveis",
+        "url": "https://topimoveissaocarlos.com.br/alugar/parque-fehr-sao-carlos-sp",
+        "link_pattern": "/imovel/",
+        "base_url": "https://topimoveissaocarlos.com.br"
+    },
+    {
+        "name": "Imobiliária Urbana",
+        "url": "https://iurbana.com.br/alugar/parque-fehr-sao-carlos-sp",
+        "link_pattern": "/imovel/",
+        "base_url": "https://iurbana.com.br"
+    },
+    {
+        "name": "Tati Imóveis",
+        "url": "https://tatimoveis.com.br/results.php?finalidade=L&tipo=&cidade=S%C3%A3o+Carlos&bairro=Parque+Fehr&ref=&dormitorios=&vagas=&min=&max=&submit=Pesquisar",
+        "link_pattern": "/imovel.php",
+        "base_url": "https://tatimoveis.com.br"
     }
+
 ]
 
 HEADERS = {
@@ -117,7 +166,12 @@ def scrape_site(site_config):
             text = a_tag.get_text(strip=True)
             
             if site_config["link_pattern"] in href:
-                full_link = href if href.startswith('http') else site_config["base_url"] + href
+                full_link = href if href.startswith('http') else site_config["base_url"] + (href if href.startswith('/') else '/' + href)
+                
+                # Se o texto do link for vazio (comum em "stretched-links"), tenta pegar do pai
+                if not text:
+                    text = a_tag.parent.get_text(separator=' ', strip=True) if a_tag.parent else "Imóvel"
+
                 
                 # Ignorar links de paginação, etc, garantindo que tenham id numerico geralmente
                 if is_valid_house_link(href, text):
