@@ -38,6 +38,6 @@ jobs:
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "bot@github.com"
-          git add imoveis.json
-          git commit -m "chore: atualizar banco de dados de imoveis enviados" || echo "Sem mudanças para commitar"
+          git add imoveis.json config.json
+          git commit -m "chore: atualizar banco de dados e configuracoes do bot" || echo "Sem mudanças para commitar"
           git push

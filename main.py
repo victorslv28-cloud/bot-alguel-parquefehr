@@ -196,13 +196,19 @@ def get_all_houses():
     return all_houses
 
 STATE_FILE = "imoveis.json"
+CONFIG_FILE = "config.json"
 
 def load_state():
     if os.path.exists(STATE_FILE):
         try:
             with open(STATE_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except json.JSONDecodeError:
+                data = json.load(f)
+                # Migração: converter lista de links para lista de objetos se necessário
+                if data and isinstance(data[0], str):
+                    logging.info("Migrando imoveis.json para novo formato...")
+                    return [{"link": link, "site": "Desconhecido", "title": "Imóvel Antigo"} for link in data]
+                return data
+        except (json.JSONDecodeError, IndexError):
             return []
     return []
 
@@ -210,12 +216,114 @@ def save_state(state_data):
     with open(STATE_FILE, 'w', encoding='utf-8') as f:
         json.dump(state_data, f, indent=4, ensure_ascii=False)
 
-if __name__ == "__main__":
-    # Load previously seen houses
-    seen_links = load_state()
+def load_config():
+    default_config = {"paused": False, "last_update_id": 0, "last_run": "Nunca"}
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            return default_config
+    return default_config
+
+def save_config(config):
+    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+        json.dump(config, f, indent=4, ensure_ascii=False)
+
+def handle_telegram_commands(config, houses_database):
+    if not TELEGRAM_BOT_TOKEN:
+        return config
+        
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates"
+    params = {"offset": config.get("last_update_id", 0) + 1, "timeout": 1}
     
-    # Check if first run by verifying if we have no saved houses
-    is_first_run = len(seen_links) == 0
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        updates = response.json().get("result", [])
+        
+        for update in updates:
+            config["last_update_id"] = update["update_id"]
+            message = update.get("message", {})
+            text = message.get("text", "").strip().lower()
+            chat_id = str(message.get("chat", {}).get("id", ""))
+            
+            # Garantir que s respondemos para o CHAT_ID configurado
+            if TELEGRAM_CHAT_ID and chat_id != TELEGRAM_CHAT_ID:
+                continue
+                
+            if text == "/status":
+                status_text = (f"🤖 <b>Status do Bot</b>\n\n"
+                              f"⏸️ <b>Pausado:</b> {'Sim' if config['paused'] else 'Não'}\n"
+                              f"🕒 <b>Ultima Verificação:</b> {config['last_run']}\n"
+                              f"🏘️ <b>Total de Casas no BD:</b> {len(houses_database)}")
+                send_telegram_message(status_text)
+                
+            elif text == "/pause":
+                config["paused"] = True
+                send_telegram_message("⏸️ <b>Bot pausado.</b> As buscas automáticas estão suspensas.")
+                
+            elif text == "/resume":
+                config["paused"] = False
+                send_telegram_message("▶️ <b>Bot retomado.</b> As buscas automáticas voltaram ao normal.")
+                
+            elif text == "/results":
+                if not houses_database:
+                    send_telegram_message("📭 Nenhum imóvel encontrado no banco de dados.")
+                    continue
+                    
+                # Agrupar por site
+                grouped = {}
+                for h in houses_database:
+                    site = h.get("site", "Outros")
+                    if site not in grouped:
+                        grouped[site] = []
+                    grouped[site].append(h)
+                
+                msg = "📋 <b>Lista de Imóveis Encontrados:</b>\n"
+                for site, imoveis in grouped.items():
+                    msg += f"\n📌 <b>{site}:</b>\n"
+                    for i in imoveis[:5]: # Limitar a 5 por site para no travar o Telegram
+                        msg += f"- <a href='{i['link']}'>{i['title'][:30]}...</a>\n"
+                    if len(imoveis) > 5:
+                        msg += f"<i>(... e mais {len(imoveis)-5})</i>\n"
+                
+                send_telegram_message(msg)
+                
+            elif text == "/commands":
+                help_text = ("🛠️ <b>Comandos Disponíveis:</b>\n\n"
+                            "/status - Ver estado atual do bot\n"
+                            "/pause - Pausar buscas automáticas\n"
+                            "/resume - Retomar buscas automáticas\n"
+                            "/results - Ver lista de imóveis encontrados\n"
+                            "/commands - Ver esta lista")
+                send_telegram_message(help_text)
+                
+    except Exception as e:
+        logging.error(f"Erro ao processar comandos do Telegram: {e}")
+        
+    return config
+
+
+if __name__ == "__main__":
+    from datetime import datetime
+    
+    # Load config and seen houses
+    config = load_config()
+    seen_houses = load_state()
+    seen_links = [h['link'] for h in seen_houses] if seen_houses and isinstance(seen_houses[0], dict) else seen_houses
+    
+    # Process commands first
+    config = handle_telegram_commands(config, seen_houses)
+    
+    # Check if paused
+    if config.get("paused", False):
+        logging.info("Bot está pausado. Pulando busca de imóveis.")
+        save_config(config)
+        save_state(seen_houses) # Salva para garantir migração se houver
+        exit()
+        
+    # Check if first run
+    is_first_run = len(seen_houses) == 0
     
     if is_first_run:
         welcome_msg = "🤖 <b>Bot de Aluguel Iniciado!</b>\n\nAcabei de ser implantado no servidor e fiz minha primeira varredura com sucesso. A partir de agora, te avisarei aqui sempre que uma casa nova surgir no Parque Fehr!"
@@ -228,6 +336,7 @@ if __name__ == "__main__":
     for h in houses:
         if h['link'] not in seen_links:
             new_houses.append(h)
+            seen_houses.append(h)
             seen_links.append(h['link'])
             
     print(f"\nTotal de casas encontradas na busca atual: {len(houses)}")
@@ -239,12 +348,12 @@ if __name__ == "__main__":
         send_telegram_message(msg)
         
     # Send status message every time the script runs
-    if not is_first_run:
-        if len(new_houses) == 0:
-            status_msg = f"ℹ️ <b>Varredura Concluída</b>\n\nAcabei de checar os {len(SITES)} sites buscando imóveis no Parque Fehr. Nenhuma casa nova foi encontrada no momento."
-        else:
-            status_msg = f"✅ <b>Varredura Concluída com Sucesso!</b>\n\nAcabei de checar os {len(SITES)} sites buscando imóveis no Parque Fehr e entreguei as {len(new_houses)} novas casas acima."
+    if not is_first_run and len(new_houses) > 0:
+        status_msg = f"✅ <b>Varredura Concluída com Sucesso!</b>\n\nAcabei de checar os {len(SITES)} sites buscando imóveis no Parque Fehr e entreguei as {len(new_houses)} novas casas acima."
         send_telegram_message(status_msg)
         
-    # Save updated state
-    save_state(seen_links)
+    # Update config and save state
+    config["last_run"] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    save_config(config)
+    save_state(seen_houses)
+
