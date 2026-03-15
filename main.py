@@ -157,11 +157,11 @@ def save_state(state_data):
         json.dump(state_data, f, indent=4, ensure_ascii=False)
 
 if __name__ == "__main__":
-    # Check if first run by verifying if state file exists
-    is_first_run = not os.path.exists(STATE_FILE)
-    
     # Load previously seen houses
     seen_links = load_state()
+    
+    # Check if first run by verifying if we have no saved houses
+    is_first_run = len(seen_links) == 0
     
     if is_first_run:
         welcome_msg = "🤖 <b>Bot de Aluguel Iniciado!</b>\n\nAcabei de ser implantado no servidor e fiz minha primeira varredura com sucesso. A partir de agora, te avisarei aqui sempre que uma casa nova surgir no Parque Fehr!"
