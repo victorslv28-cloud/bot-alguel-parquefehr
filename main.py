@@ -348,8 +348,11 @@ if __name__ == "__main__":
         send_telegram_message(msg)
         
     # Send status message every time the script runs
-    if not is_first_run and len(new_houses) > 0:
-        status_msg = f"✅ <b>Varredura Concluída com Sucesso!</b>\n\nAcabei de checar os {len(SITES)} sites buscando imóveis no Parque Fehr e entreguei as {len(new_houses)} novas casas acima."
+    if not is_first_run:
+        if len(new_houses) > 0:
+            status_msg = f"✅ <b>Varredura Concluída com Sucesso!</b>\n\nAcabei de checar os {len(SITES)} sites buscando imóveis no Parque Fehr e entreguei as {len(new_houses)} novas casas acima."
+        else:
+            status_msg = f"ℹ️ <b>Varredura Concluída</b>\n\nNenhuma casa nova foi encontrada no Parque Fehr nesta verificação."
         send_telegram_message(status_msg)
         
     # Update config and save state

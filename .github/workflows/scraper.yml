@@ -11,6 +11,11 @@ on:
 permissions:
   contents: write # Permissão necessária para o bot commitar o arquivo de volta no repositório
 
+# Evita que múltiplas execuções rodem ao mesmo tempo (ajuda se o GitHub atrasar e acumular)
+concurrency:
+  group: bot-aluguel
+  cancel-in-progress: true
+
 jobs:
   scrape-and-notify:
     runs-on: ubuntu-latest
