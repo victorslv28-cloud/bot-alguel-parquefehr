@@ -1,27 +1,127 @@
 [
-    "https://centerimoveis.com/imovel/venda-e-locacao/casas/sao-carlos/parque-fehr/126998",
-    "https://centerimoveis.com/imovel/locacao/casas/sao-carlos/parque-fehr-parque-fehr/128386",
-    "https://roca.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-residencial-parque-fehr/25094",
-    "https://roca.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-residencial-parque-fehr/86985",
-    "https://roca.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-residencial-parque-fehr/85116",
-    "https://roca.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-residencial-parque-fehr/58156",
-    "https://roca.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-residencial-parque-fehr/44679",
-    "https://roca.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-residencial-parque-fehr/77832",
-    "https://mariaaires.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-residencial-pq-fehr/28347",
-    "https://mariaaires.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-parque-fehr/3083",
-    "https://mariaaires.com.br/imovel/venda-e-locacao/casas/sao-carlos/parque-fehr-parque-fehr/27154",
-    "https://mariaaires.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-parque-fehr/27754",
-    "https://mariaaires.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-parque-fehr/25768",
-    "https://abiasimoveis.com.br/imovel/9194/casa-em-condominio-1-quarto-parque-fehr-sao-carlos/",
-    "https://abiasimoveis.com.br/imovel/2905/casa-em-condominio-3-quartos-condominio-parque-fher-parque-fehr-sao-carlos/",
-    "https://abiasimoveis.com.br/imovel/12020/casa-em-condominio-3-quartos-parque-fehr-sao-carlos/",
-    "https://iplano.com.br/imovel/venda-e-locacao/casas/sao-carlos/parque-fehr/18787",
-    "https://iplano.com.br/imovel/venda-e-locacao/casas/sao-carlos/residencial-parque-fehr/17511",
-    "https://iplano.com.br/imovel/venda-e-locacao/casas/sao-carlos/parque-fehr/3267",
-    "https://www.sapeimoveis.com.br/Detalhes?id=7687&opcao=2",
-    "https://www.icontato.com.br/imovel/venda-e-locacao/casas/sao-carlos/parque-fehr-residencial-parque-fehr/20499",
-    "https://saocarlosimoveis.com.br/imovel/venda-e-locacao/casas/sao-carlos/parque-fehr-parque-fehr/2430",
-    "https://saocarlosimoveis.com.br/imovel/venda-e-locacao/casas/sao-carlos/parque-fehr-parque-fehr/2753",
-    "https://topimoveissaocarlos.com.br/imovel/venda-e-locacao/casas/sao-carlos/parque-fehr-parque-fehr/3599",
-    "https://topimoveissaocarlos.com.br/imovel/venda-e-locacao/casas/sao-carlos/parque-fehr-parque-fehr/3026"
+    {
+        "link": "https://centerimoveis.com/imovel/venda-e-locacao/casas/sao-carlos/parque-fehr/126998",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://centerimoveis.com/imovel/locacao/casas/sao-carlos/parque-fehr-parque-fehr/128386",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://roca.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-residencial-parque-fehr/25094",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://roca.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-residencial-parque-fehr/86985",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://roca.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-residencial-parque-fehr/85116",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://roca.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-residencial-parque-fehr/58156",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://roca.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-residencial-parque-fehr/44679",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://roca.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-residencial-parque-fehr/77832",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://mariaaires.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-residencial-pq-fehr/28347",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://mariaaires.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-parque-fehr/3083",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://mariaaires.com.br/imovel/venda-e-locacao/casas/sao-carlos/parque-fehr-parque-fehr/27154",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://mariaaires.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-parque-fehr/27754",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://mariaaires.com.br/imovel/locacao/casas/sao-carlos/parque-fehr-parque-fehr/25768",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://abiasimoveis.com.br/imovel/9194/casa-em-condominio-1-quarto-parque-fehr-sao-carlos/",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://abiasimoveis.com.br/imovel/2905/casa-em-condominio-3-quartos-condominio-parque-fher-parque-fehr-sao-carlos/",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://abiasimoveis.com.br/imovel/12020/casa-em-condominio-3-quartos-parque-fehr-sao-carlos/",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://iplano.com.br/imovel/venda-e-locacao/casas/sao-carlos/parque-fehr/18787",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://iplano.com.br/imovel/venda-e-locacao/casas/sao-carlos/residencial-parque-fehr/17511",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://iplano.com.br/imovel/venda-e-locacao/casas/sao-carlos/parque-fehr/3267",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://www.sapeimoveis.com.br/Detalhes?id=7687&opcao=2",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://www.icontato.com.br/imovel/venda-e-locacao/casas/sao-carlos/parque-fehr-residencial-parque-fehr/20499",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://saocarlosimoveis.com.br/imovel/venda-e-locacao/casas/sao-carlos/parque-fehr-parque-fehr/2430",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://saocarlosimoveis.com.br/imovel/venda-e-locacao/casas/sao-carlos/parque-fehr-parque-fehr/2753",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://topimoveissaocarlos.com.br/imovel/venda-e-locacao/casas/sao-carlos/parque-fehr-parque-fehr/3599",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    },
+    {
+        "link": "https://topimoveissaocarlos.com.br/imovel/venda-e-locacao/casas/sao-carlos/parque-fehr-parque-fehr/3026",
+        "site": "Desconhecido",
+        "title": "Imóvel Antigo"
+    }
 ]
