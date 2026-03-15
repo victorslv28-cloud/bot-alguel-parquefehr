@@ -1,0 +1,41 @@
+name: Bot de Aluguel de Imóveis
+
+on:
+  schedule:
+    # Executa a cada 4 horas
+    - cron: '0 */4 * * *'
+  workflow_dispatch: # Permite rodar manualmente pelo painel do GitHub
+
+permissions:
+  contents: write # Permissão necessária para o bot commitar o arquivo de volta no repositório
+
+jobs:
+  scrape-and-notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip' # Acelera a instalação das dependências
+
+      - name: Instalar Dependências
+        run: pip install -r requirements.txt
+
+      - name: Rodar o Bot
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python main.py
+
+      - name: Commitar e Fazer Push do json (Memória do Bot)
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "bot@github.com"
+          git add imoveis.json
+          git commit -m "chore: atualizar banco de dados de imoveis enviados" || echo "Sem mudanças para commitar"
+          git push
