@@ -2,8 +2,10 @@ name: Bot de Aluguel de Imóveis
 
 on:
   schedule:
-    # Executa a cada 4 horas
-    - cron: '0 */4 * * *'
+    # Executa a cada hora entre 7h00 e 19h00 (Brasília) -> 10h-22h UTC
+    - cron: '0 10-22 * * *'
+    # Executa a cada duas horas entre 19h01 e 6h59 (Brasília) -> 0h-8h UTC
+    - cron: '0 0,2,4,6,8 * * *'
   workflow_dispatch: # Permite rodar manualmente pelo painel do GitHub
 
 permissions:
