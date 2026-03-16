@@ -230,12 +230,55 @@ def save_config(config):
     with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
         json.dump(config, f, indent=4, ensure_ascii=False)
 
-def handle_telegram_commands(config, houses_database):
+# Funções de comando movidas para o bloco principal para melhor controle do loop.
+
+
+def run_bot_sweep(config, seen_houses, seen_links, is_first_run=False):
+    """Executa a varredura de casas e envia notificações."""
+    if config.get("paused", False):
+        logging.info("Bot está pausado. Pulando busca de imóveis.")
+        return config, seen_houses, seen_links
+
+    if is_first_run:
+        welcome_msg = "🤖 <b>Bot de Aluguel Iniciado!</b>\n\nEstou rodando agora em modo persistente. Te avisarei aqui sempre que uma casa nova surgir, e você pode usar /run a qualquer momento para uma busca instantânea!"
+        send_telegram_message(welcome_msg)
+        logging.info("Mensagem de primeira execução enviada pro Telegram.")
+        
+    houses = get_all_houses()
+    
+    new_houses = []
+    for h in houses:
+        if h['link'] not in seen_links:
+            new_houses.append(h)
+            seen_houses.append(h)
+            seen_links.append(h['link'])
+            
+    logging.info(f"Total de casas encontradas na busca: {len(houses)}")
+    logging.info(f"Total de casas NOVAS encontradas: {len(new_houses)}")
+    
+    for h in new_houses:
+        msg = f"🏠 <b>Nova casa encontrada!</b>\n\n📌 <b>Imobiliária:</b> {h['site']}\n📝 <b>Título:</b> {h['title']}\n🔗 <a href='{h['link']}'>Link do Imóvel</a>"
+        send_telegram_message(msg)
+        
+    if not is_first_run:
+        if len(new_houses) > 0:
+            status_msg = f"✅ <b>Varredura Concluída!</b>\n\nEncontrei {len(new_houses)} novas casas no Parque Fehr."
+        else:
+            status_msg = f"ℹ️ <b>Varredura Concluída</b>\n\nNenhuma casa nova encontrada desta vez."
+        send_telegram_message(status_msg)
+        
+    config["last_run"] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    save_config(config)
+    save_state(seen_houses)
+    return config, seen_houses, seen_links
+
+def handle_telegram_commands(config, houses_database, seen_links):
     if not TELEGRAM_BOT_TOKEN:
-        return config
+        return config, False
         
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates"
     params = {"offset": config.get("last_update_id", 0) + 1, "timeout": 1}
+    trigger_run = False
     
     try:
         response = requests.get(url, params=params, timeout=10)
@@ -247,7 +290,6 @@ def handle_telegram_commands(config, houses_database):
             text = message.get("text", "").strip().lower()
             chat_id = str(message.get("chat", {}).get("id", ""))
             
-            # Garantir que s respondemos para o CHAT_ID configurado
             if TELEGRAM_CHAT_ID and chat_id != TELEGRAM_CHAT_ID:
                 continue
                 
@@ -261,36 +303,37 @@ def handle_telegram_commands(config, houses_database):
             elif text == "/pause":
                 config["paused"] = True
                 send_telegram_message("⏸️ <b>Bot pausado.</b> As buscas automáticas estão suspensas.")
+                save_config(config)
                 
             elif text == "/resume":
                 config["paused"] = False
                 send_telegram_message("▶️ <b>Bot retomado.</b> As buscas automáticas voltaram ao normal.")
+                save_config(config)
+                
+            elif text == "/run":
+                send_telegram_message("⚡ <b>Iniciando varredura manual instantânea...</b>")
+                trigger_run = True
                 
             elif text == "/results":
                 if not houses_database:
                     send_telegram_message("📭 Nenhum imóvel encontrado no banco de dados.")
                     continue
-                    
-                # Agrupar por site
                 grouped = {}
                 for h in houses_database:
                     site = h.get("site", "Outros")
-                    if site not in grouped:
-                        grouped[site] = []
+                    if site not in grouped: grouped[site] = []
                     grouped[site].append(h)
                 
                 msg = "📋 <b>Lista de Imóveis Encontrados:</b>\n"
                 for site, imoveis in grouped.items():
                     msg += f"\n📌 <b>{site}:</b>\n"
-                    for i in imoveis[:5]: # Limitar a 5 por site para no travar o Telegram
+                    for i in imoveis[:5]:
                         msg += f"- <a href='{i['link']}'>{i['title'][:30]}...</a>\n"
-                    if len(imoveis) > 5:
-                        msg += f"<i>(... e mais {len(imoveis)-5})</i>\n"
-                
                 send_telegram_message(msg)
                 
             elif text == "/commands":
                 help_text = ("🛠️ <b>Comandos Disponíveis:</b>\n\n"
+                            "/run - Forçar varredura agora\n"
                             "/status - Ver estado atual do bot\n"
                             "/pause - Pausar buscas automáticas\n"
                             "/resume - Retomar buscas automáticas\n"
@@ -301,62 +344,54 @@ def handle_telegram_commands(config, houses_database):
     except Exception as e:
         logging.error(f"Erro ao processar comandos do Telegram: {e}")
         
-    return config
-
+    return config, trigger_run
 
 if __name__ == "__main__":
-    from datetime import datetime
+    import time
+    from datetime import datetime, timedelta
     
-    # Load config and seen houses
+    logging.info("Iniciando Bot em modo persistente...")
+    
     config = load_config()
     seen_houses = load_state()
     seen_links = [h['link'] for h in seen_houses] if seen_houses and isinstance(seen_houses[0], dict) else seen_houses
     
-    # Process commands first
-    config = handle_telegram_commands(config, seen_houses)
+    # Configurar intervalo (60 minutos)
+    CHECK_INTERVAL_SECONDS = 3600 
+    last_scheduled_run = datetime.now() - timedelta(seconds=CHECK_INTERVAL_SECONDS) # Forçar uma run imediata no início se quiser
     
-    # Check if paused
-    if config.get("paused", False):
-        logging.info("Bot está pausado. Pulando busca de imóveis.")
-        save_config(config)
-        save_state(seen_houses) # Salva para garantir migração se houver
-        exit()
-        
-    # Check if first run
-    is_first_run = len(seen_houses) == 0
-    
-    if is_first_run:
-        welcome_msg = "🤖 <b>Bot de Aluguel Iniciado!</b>\n\nAcabei de ser implantado no servidor e fiz minha primeira varredura com sucesso. A partir de agora, te avisarei aqui sempre que uma casa nova surgir no Parque Fehr!"
-        send_telegram_message(welcome_msg)
-        logging.info("Mensagem de primeira execução enviada pro Telegram.")
-        
-    houses = get_all_houses()
-    
-    new_houses = []
-    for h in houses:
-        if h['link'] not in seen_links:
-            new_houses.append(h)
-            seen_houses.append(h)
-            seen_links.append(h['link'])
+    # Primeira execução se o banco estiver vazio
+    if not seen_houses:
+        config, seen_houses, seen_links = run_bot_sweep(config, seen_houses, seen_links, is_first_run=True)
+        last_scheduled_run = datetime.now()
+
+    while True:
+        try:
+            # 1. Processar Comandos do Telegram
+            config, trigger_manual = handle_telegram_commands(config, seen_houses, seen_links)
             
-    print(f"\nTotal de casas encontradas na busca atual: {len(houses)}")
-    print(f"Total de casas NOVAS encontradas: {len(new_houses)}")
-    
-    for h in new_houses:
-        msg = f"🏠 <b>Nova casa encontrada!</b>\n\n📌 <b>Imobiliária:</b> {h['site']}\n📝 <b>Título:</b> {h['title']}\n🔗 <a href='{h['link']}'>Link do Imóvel</a>"
-        print(f"[NOVA] [{h['site']}] {h['title']} - {h['link']}")
-        send_telegram_message(msg)
-        
-    # Send status message every time the script runs
-    if not is_first_run:
-        if len(new_houses) > 0:
-            status_msg = f"✅ <b>Varredura Concluída com Sucesso!</b>\n\nAcabei de checar os {len(SITES)} sites buscando imóveis no Parque Fehr e entreguei as {len(new_houses)} novas casas acima."
-        else:
-            status_msg = f"ℹ️ <b>Varredura Concluída</b>\n\nNenhuma casa nova foi encontrada no Parque Fehr nesta verificação."
-        send_telegram_message(status_msg)
-        
-    # Update config and save state
-    config["last_run"] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    save_config(config)
-    save_state(seen_houses)
+            # 2. Verificar se precisa de Varredura Agendada
+            now = datetime.now()
+            time_since_last = (now - last_scheduled_run).total_seconds()
+            
+            should_run_scheduled = time_since_last >= CHECK_INTERVAL_SECONDS and not config.get("paused", False)
+            
+            if trigger_manual or should_run_scheduled:
+                if should_run_scheduled:
+                    logging.info("Iniciando varredura agendada...")
+                
+                config, seen_houses, seen_links = run_bot_sweep(config, seen_houses, seen_links)
+                
+                if should_run_scheduled:
+                    last_scheduled_run = datetime.now()
+            
+            # 3. Dormir um pouco para não fritar o processador e respeitar rate limits do Telegram
+            time.sleep(10)
+            
+        except KeyboardInterrupt:
+            logging.info("Bot interrompido pelo usuário.")
+            break
+        except Exception as e:
+            logging.error(f"Erro crítico no loop principal: {e}")
+            time.sleep(30) # Espera um pouco antes de tentar de novo após erro
 
