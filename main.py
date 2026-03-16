@@ -320,18 +320,39 @@ def handle_telegram_commands(config, houses_database, seen_links):
                 if not houses_database:
                     send_telegram_message("📭 Nenhum imóvel encontrado no banco de dados.")
                     continue
+                
+                # Inverter a base para mostrar os mais novos primeiro
+                reversed_db = list(reversed(houses_database))
+                
                 grouped = {}
-                for h in houses_database:
+                for h in reversed_db:
                     site = h.get("site", "Outros")
                     if site not in grouped: grouped[site] = []
                     grouped[site].append(h)
                 
-                msg = "📋 <b>Lista de Imóveis Encontrados:</b>\n"
+                header = "📋 <b>Lista de Imóveis Encontrados (Mais novos primeiro):</b>\n"
+                msg = header
+                
                 for site, imoveis in grouped.items():
-                    msg += f"\n📌 <b>{site}:</b>\n"
-                    for i in imoveis[:5]:
-                        msg += f"- <a href='{i['link']}'>{i['title'][:30]}...</a>\n"
-                send_telegram_message(msg)
+                    site_header = f"\n📌 <b>{site}:</b>\n"
+                    # Se adicionar o cabeçalho do site já estourar, manda o que tem e começa um novo
+                    if len(msg) + len(site_header) > 3800:
+                        send_telegram_message(msg)
+                        msg = site_header
+                    else:
+                        msg += site_header
+                        
+                    for i in imoveis:
+                        line = f"- <a href='{i['link']}'>{i['title'][:35]}...</a>\n"
+                        # Se adicionar a linha estourar o limite do Telegram (~4096, usando 3800 por segurança)
+                        if len(msg) + len(line) > 3800:
+                            send_telegram_message(msg)
+                            msg = f"📌 <b>{site} (continuação):</b>\n" + line
+                        else:
+                            msg += line
+                
+                if msg:
+                    send_telegram_message(msg)
                 
             elif text == "/commands":
                 help_text = ("🛠️ <b>Comandos Disponíveis:</b>\n\n"
