@@ -4,6 +4,8 @@ import logging
 from dotenv import load_dotenv
 import requests
 from bs4 import BeautifulSoup
+from flask import Flask
+import threading
 
 # Configuração de Log
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -346,11 +348,29 @@ def handle_telegram_commands(config, houses_database, seen_links):
         
     return config, trigger_run
 
+# --- Início do Servidor de Health Check (para o Render) ---
+app = Flask(__name__)
+
+@app.route('/')
+def health_check():
+    return "Bot is alive!", 200
+
+def run_health_check_server():
+    # O Render fornece a porta na variável de ambiente PORT
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+# --- Fim do Servidor de Health Check ---
+
 if __name__ == "__main__":
     import time
     from datetime import datetime, timedelta
     
     logging.info("Iniciando Bot em modo persistente...")
+    
+    # Iniciar o servidor de health check em uma thread separada
+    health_thread = threading.Thread(target=run_health_check_server, daemon=True)
+    health_thread.start()
+    logging.info("Servidor de Health Check iniciado.")
     
     config = load_config()
     seen_houses = load_state()
