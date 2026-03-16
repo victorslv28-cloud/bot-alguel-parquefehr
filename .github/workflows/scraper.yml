@@ -1,11 +1,6 @@
 name: Bot de Aluguel de Imóveis
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'imoveis.json'
-      - 'config.json'
   schedule:
     # Executa a cada hora entre 7h05 e 20h05 (Brasília) -> 10h-23h UTC
     - cron: '5 10-23 * * *'
