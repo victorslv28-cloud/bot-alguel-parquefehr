@@ -6,6 +6,13 @@ import requests
 from bs4 import BeautifulSoup
 from flask import Flask
 import threading
+from datetime import datetime, timedelta, timezone
+
+# Configuração de Fuso Horário (Brasília UTC-3)
+BRT = timezone(timedelta(hours=-3))
+
+def get_brt_now():
+    return datetime.now(BRT)
 
 # Configuração de Log
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -235,16 +242,22 @@ def save_config(config):
 # Funções de comando movidas para o bloco principal para melhor controle do loop.
 
 
-def run_bot_sweep(config, seen_houses, seen_links, is_first_run=False):
-    """Executa a varredura de casas e envia notificações."""
-    if config.get("paused", False):
-        logging.info("Bot está pausado. Pulando busca de imóveis.")
+def run_bot_sweep(config, seen_houses, seen_links, is_manual=False, is_heartbeat=False):
+    """Executa a varredura de casas e envia notificações seguindo as regras de silêncio."""
+    now_brt = get_brt_now()
+    is_silent_hours = 0 <= now_brt.hour < 7
+    
+    # Logs para debug no servidor
+    logging.info(f"Iniciando varredura (Manual: {is_manual}, Heartbeat: {is_heartbeat}, Silent: {is_silent_hours})")
+
+    if config.get("paused", False) and not is_manual:
+        logging.info("Bot está pausado. Pulando busca automática.")
         return config, seen_houses, seen_links
 
-    if is_first_run:
-        welcome_msg = "🤖 <b>Bot de Aluguel Iniciado!</b>\n\nEstou rodando agora em modo persistente. Te avisarei aqui sempre que uma casa nova surgir, e você pode usar /run a qualquer momento para uma busca instantânea!"
+    # Mensagem de Boas-vindas (apenas se manual ou fora do horário de silêncio)
+    if not seen_houses and (is_manual or not is_silent_hours):
+        welcome_msg = "🤖 <b>Bot de Aluguel Iniciado!</b>\n\nEstou monitorando o Parque Fehr. Use /run para buscar agora ou /status para ver o estado."
         send_telegram_message(welcome_msg)
-        logging.info("Mensagem de primeira execução enviada pro Telegram.")
         
     houses = get_all_houses()
     
@@ -255,21 +268,44 @@ def run_bot_sweep(config, seen_houses, seen_links, is_first_run=False):
             seen_houses.append(h)
             seen_links.append(h['link'])
             
-    logging.info(f"Total de casas encontradas na busca: {len(houses)}")
-    logging.info(f"Total de casas NOVAS encontradas: {len(new_houses)}")
+    logging.info(f"Varredura: {len(houses)} encontradas, {len(new_houses)} novas.")
     
-    for h in new_houses:
-        msg = f"🏠 <b>Nova casa encontrada!</b>\n\n📌 <b>Imobiliária:</b> {h['site']}\n📝 <b>Título:</b> {h['title']}\n🔗 <a href='{h['link']}'>Link do Imóvel</a>"
-        send_telegram_message(msg)
-        
-    if not is_first_run:
-        if len(new_houses) > 0:
-            status_msg = f"✅ <b>Varredura Concluída!</b>\n\nEncontrei {len(new_houses)} novas casas no Parque Fehr."
+    # 1. Notificar Casas Novas (Sempre notifica se houver novas, exceto se for silêncio absoluto e quisermos silêncio total)
+    # O usuário pediu: "nao deve me enviar mensagens das verificacoes automaticas entre 00h e 07h00 BRT"
+    # Entendo que nem casa nova deve avisar nesse período se for automático.
+    
+    if new_houses:
+        if is_manual or not is_silent_hours:
+            for h in new_houses:
+                msg = f"🏠 <b>Nova casa encontrada!</b>\n\n📌 <b>Imobiliária:</b> {h['site']}\n📝 <b>Título:</b> {h['title']}\n🔗 <a href='{h['link']}'>Link do Imóvel</a>"
+                send_telegram_message(msg)
         else:
-            status_msg = f"ℹ️ <b>Varredura Concluída</b>\n\nNenhuma casa nova encontrada desta vez."
+            logging.info(f"{len(new_houses)} novas casas encontradas no horário de silêncio. Notificação suprimida.")
+
+    # 2. Mensagem de Status/Conclusão
+    if is_manual:
+        # Busca manual sempre responde
+        if len(new_houses) > 0:
+            status_msg = f"✅ <b>Varredura Manual Concluída!</b>\n\nEncontrei {len(new_houses)} novas casas."
+        else:
+            status_msg = f"ℹ️ <b>Varredura Manual Concluída</b>\n\nNenhuma casa nova encontrada."
         send_telegram_message(status_msg)
+    elif is_heartbeat:
+        # Heartbeat de 4h (só se não for horário de silêncio)
+        if not is_silent_hours:
+            status_msg = f"📡 <b>Relatório de Atividade (4h)</b>\n\nO bot continua monitorando o Parque Fehr. Nas últimas buscas, nenhuma casa nova foi encontrada."
+            send_telegram_message(status_msg)
+    elif new_houses and not is_silent_hours:
+        # Notificação automática de sucesso (opcional, já enviou os links acima)
+        status_msg = f"✅ <b>Varredura Automática:</b> {len(new_houses)} novas casas encontradas!"
+        send_telegram_message(status_msg)
+
+    # Atualizar estado
+    config["last_run"] = now_brt.strftime("%d/%m/%Y %H:%M:%S")
+    config["last_run_timestamp"] = now_brt.timestamp()
+    if is_heartbeat or new_houses:
+        config["last_heartbeat_timestamp"] = now_brt.timestamp()
         
-    config["last_run"] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     save_config(config)
     save_state(seen_houses)
     return config, seen_houses, seen_links
@@ -384,49 +420,66 @@ def run_health_check_server():
 
 if __name__ == "__main__":
     import time
-    from datetime import datetime, timedelta
     
-    logging.info("Iniciando Bot em modo persistente...")
-    
-    # Iniciar o servidor de health check em uma thread separada
-    health_thread = threading.Thread(target=run_health_check_server, daemon=True)
-    health_thread.start()
-    logging.info("Servidor de Health Check iniciado.")
+    logging.info("Iniciando Bot em modo persistente com regras de silêncio...")
     
     config = load_config()
     seen_houses = load_state()
     seen_links = [h['link'] for h in seen_houses] if seen_houses and isinstance(seen_houses[0], dict) else seen_houses
     
-    # Configurar intervalo (60 minutos)
-    CHECK_INTERVAL_SECONDS = 3600 
-    last_scheduled_run = datetime.now() - timedelta(seconds=CHECK_INTERVAL_SECONDS) # Forçar uma run imediata no início se quiser
+    # Iniciar o servidor de health check em uma thread separada
+    health_thread = threading.Thread(target=run_health_check_server, daemon=True)
+    health_thread.start()
+    logging.info("Servidor de Health Check iniciado.")
+
+    # Recuperar timestamps do config para persistência após restart
+    CHECK_INTERVAL_SECONDS = 3600 # 1 hora
+    HEARTBEAT_INTERVAL_SECONDS = 14400 # 4 horas
     
-    # Primeira execução se o banco estiver vazio
-    if not seen_houses:
-        config, seen_houses, seen_links = run_bot_sweep(config, seen_houses, seen_links, is_first_run=True)
-        last_scheduled_run = datetime.now()
+    last_run_ts = config.get("last_run_timestamp", 0)
+    last_heartbeat_ts = config.get("last_heartbeat_timestamp", 0)
 
     while True:
         try:
             # 1. Processar Comandos do Telegram
             config, trigger_manual = handle_telegram_commands(config, seen_houses, seen_links)
             
-            # 2. Verificar se precisa de Varredura Agendada
-            now = datetime.now()
-            time_since_last = (now - last_scheduled_run).total_seconds()
+            now_brt = get_brt_now()
+            now_ts = now_brt.timestamp()
             
-            should_run_scheduled = time_since_last >= CHECK_INTERVAL_SECONDS and not config.get("paused", False)
+            # 2. Verificar se precisa de Varredura Agendada (1h)
+            time_since_last = now_ts - last_run_ts
+            should_run_scheduled = time_since_last >= CHECK_INTERVAL_SECONDS
             
-            if trigger_manual or should_run_scheduled:
-                if should_run_scheduled:
-                    logging.info("Iniciando varredura agendada...")
+            # 3. Verificar se precisa de Heartbeat (4h)
+            time_since_heartbeat = now_ts - last_heartbeat_ts
+            should_run_heartbeat = time_since_heartbeat >= HEARTBEAT_INTERVAL_SECONDS
+            
+            if trigger_manual or should_run_scheduled or should_run_heartbeat:
+                is_heartbeat = False
+                if not trigger_manual and not should_run_scheduled and should_run_heartbeat:
+                    is_heartbeat = True
+                    logging.info("Iniciando heartbeat de 4 horas...")
+                elif should_run_scheduled:
+                    logging.info(f"Iniciando varredura agendada (passaram {int(time_since_last/60)}min)...")
+
+                config, seen_houses, seen_links = run_bot_sweep(
+                    config, seen_houses, seen_links, 
+                    is_manual=trigger_manual, 
+                    is_heartbeat=is_heartbeat
+                )
                 
-                config, seen_houses, seen_links = run_bot_sweep(config, seen_houses, seen_links)
+                # Atualizar marcadores locais
+                if trigger_manual or should_run_scheduled:
+                    last_run_ts = now_ts
+                if is_heartbeat:
+                    last_heartbeat_ts = now_ts
                 
-                if should_run_scheduled:
-                    last_scheduled_run = datetime.now()
-            
-            # 3. Dormir um pouco para não fritar o processador e respeitar rate limits do Telegram
+                # Se encontrou casas, o heartbeat reseta
+                # (já lidado dentro do run_bot_sweep ao salvar no config, mas atualizamos o local aqui)
+                last_heartbeat_ts = config.get("last_heartbeat_timestamp", last_heartbeat_ts)
+
+            # Dormir para polling do Telegram
             time.sleep(10)
             
         except KeyboardInterrupt:
@@ -434,5 +487,5 @@ if __name__ == "__main__":
             break
         except Exception as e:
             logging.error(f"Erro crítico no loop principal: {e}")
-            time.sleep(30) # Espera um pouco antes de tentar de novo após erro
+            time.sleep(30)
 
